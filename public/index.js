@@ -1,50 +1,87 @@
-import Board from "./board.js";
-import { makeMessage } from "./message.js";
+import Game from "./game.js";
+import {
+  GameCreated,
+  GameDraw,
+  GameWon,
+  PlayerAdded,
+  PlayerMoved,
+  PlayerRemoved
+} from "./event.js";
 
-let username = "";
-const socket = new WebSocket("ws://localhost:3000");
-const board = new Board(document.getElementById("tic-tac-toe"));
+async function main() {
+  const socket = io("ws://localhost:3000");
+  const game = new Game(1);
 
-board.onMove = function(cellId) {
-  socket.send(
-    makeMessage("move", {
-      cellId
-    })
-  );
-};
+  socket.on("connect", () => {
+    console.log("connected", socket.id);
+  });
 
-socket.onmessage = function(event) {
-  const msg = JSON.parse(event.data);
-  switch (msg.action) {
-    case "play":
-      const end = board.deserialize(msg.data);
-      if (end) {
-        const newGame = window.confirm("New game?");
-        console.log({ newGame });
-        newGame
-          ? socket.send(makeMessage("new"))
-          : socket.send(makeMessage("quit"));
-      }
-      break;
-    case "error":
-      window.alert(msg.data);
-      break;
-    case "quit":
-      window.alert("Player disconnected");
-      socket.close();
-      break;
-    default:
-  }
-};
+  const $ = el => document.getElementById(el);
 
-function promptUsername() {
-  while (!username) {
-    username = window.prompt("Enter username", "");
-  }
-  document.getElementById("players").innerText = `${username} (you)`;
+  const $cells = $("tic-tac-toe").querySelectorAll("div");
+  $cells.forEach(($cell, i) => {
+    $cell.addEventListener("click", () => {
+      socket.emit("PlayerMoved", i);
+    });
+  });
+
+  const $players = $("players");
+  game.update = () => {
+    $players.innerText =
+      game.currentPlayer() === socket.id ? "Your turn" : "Waiting for opponent";
+    game.cells.forEach((cell, i) => {
+      $cells[i].innerText = cell;
+    });
+  };
+
+  socket.on("GameCreated", event => {
+    const e = new GameCreated(event.aggregateId, event.aggregateVersion, event);
+    game.apply(e);
+    game.update();
+  });
+
+  socket.on("GameDraw", event => {
+    const e = new GameDraw(event.aggregateId, event.aggregateVersion);
+    game.apply(e);
+    game.update();
+    window.alert("Game Draw");
+  });
+
+  socket.on("GameWon", event => {
+    const e = new GameWon(
+      event.aggregateId,
+      event.aggregateVersion,
+      event.playerId
+    );
+    game.apply(e);
+    game.update();
+    const msg = event.playerId === socket.id ? "You won" : "You lost";
+    window.alert(msg);
+  });
+
+  socket.on("PlayerMoved", event => {
+    const e = new PlayerMoved(event.aggregateId, event.aggregateVersion, event);
+    game.apply(e);
+    game.update();
+  });
+
+  socket.on("PlayerAdded", event => {
+    const e = new PlayerAdded(
+      event.aggregateId,
+      event.aggregateVersion,
+      event.players
+    );
+    game.apply(e);
+    game.update();
+  });
+  socket.on("PlayerRemoved", event => {
+    const e = new PlayerRemoved(
+      event.aggregateId,
+      event.aggregateVersion,
+      event.players
+    );
+    game.apply(e);
+    game.update();
+  });
 }
-
-socket.onopen = function(event) {
-  promptUsername();
-  socket.send(makeMessage("join", { username }));
-};
+main().catch(console.error);

@@ -1,73 +1,50 @@
-import WebSocket from "ws";
 import express from "express";
-import * as uuid from "uuid";
-
-import Board from "./board.js";
-import Player from "./common/player.js";
-import { makeMessage } from "./common/message.js";
+import http from "http";
+import { Server as Socket } from "socket.io";
+import { createGame, resetGame } from "./common/game.js";
 
 async function main() {
-  const PORT = 3000;
-  const app = express();
+  let id = 0;
+  let game = createGame(++id);
 
+  const app = express();
   app.use(express.static("public"));
   app.use(express.static("common")); // Shared logic between client and server is placed in common/.
 
-  const ws = new WebSocket.Server({ noServer: true });
-  const server = app.listen(PORT, () => {
-    console.log("listening on port *:%d, press ctrl + c to cancel", PORT);
-  });
+  const server = http.createServer(app);
+  const io = new Socket(server);
 
-  server.on("upgrade", (request, socket, head) => {
-    ws.handleUpgrade(request, socket, head, socket => {
-      ws.emit("connection", socket, request);
-    });
-  });
+  io.on("connection", socket => {
+    const userId = socket.id;
 
-  // Single game (no rooms).
-  const board = new Board();
-
-  ws.on("connection", function connection(socket) {
-    const playerId = uuid.v4();
-
-    board.on("error", sendError);
-    board.on("play", () => {
-      socket.send(makeMessage("play", board.serialize(playerId)));
-    });
-
-    function sendError(error) {
-      socket.send(makeMessage("error", error.message));
+    for (let event of game.events) {
+      socket.emit(event.constructor.name, event);
     }
+    game.addPlayer(userId);
 
-    socket.on("message", function incoming(raw) {
-      const msg = JSON.parse(raw);
-      if (!msg) return;
+    socket.on("PlayerMoved", position => {
+      game.move(position, userId);
+    });
 
-      try {
-        const { action, data } = msg;
-        // There are only two main messages from the client - when a player join and when a player move.
-        // The game state is computed on the server side and returned to the client.
-        switch (action) {
-          case "join":
-            const player = new Player(playerId, data.username);
-            board.addPlayer(player);
-            break;
-          case "move":
-            board.move(data.cellId);
-            break;
-          case "new":
-            board.reset();
-            break;
-          case "quit":
-            socket.send(makeMessage("quit"));
-            break;
-          default:
-        }
-      } catch (error) {
-        sendError(error);
+    console.log("user connected", userId);
+    socket.on("disconnect", () => {
+      game.removePlayer(userId);
+      if (!game.checkHasPlayers()) {
+        resetGame(game);
       }
+      console.log("user disconnected", userId);
     });
   });
+
+  server.listen(3000, () => {
+    console.log("listening on port *:%d, press ctrl + c to cancel", 3000);
+  });
+
+  game.on("GameDraw", event => io.emit("GameDraw", event));
+  game.on("GameWon", event => io.emit("GameWon", event));
+  game.on("PlayerAdded", event => io.emit("PlayerAdded", event));
+  game.on("PlayerMoved", event => io.emit("PlayerMoved", event));
+  game.on("GameReset", event => io.emit("GameReset", event));
 }
 
 main().catch(console.error);
