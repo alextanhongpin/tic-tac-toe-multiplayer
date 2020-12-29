@@ -1,0 +1,17 @@
+body {
+  text-align: center;
+}
+
+#tic-tac-toe {
+  display: grid;
+  --dim: 5rem;
+  grid-template-columns: repeat(3, var(--dim));
+  grid-template-rows: repeat(3, var(--dim));
+  justify-content: center;
+}
+
+#tic-tac-toe div {
+  border: 1px solid #ddd;
+  line-height: var(--dim);
+  font-size: calc(var(--dim) / 2);
+}
