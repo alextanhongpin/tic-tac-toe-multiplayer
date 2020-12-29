@@ -6,6 +6,7 @@ import {
   PlayerRemoved,
   PlayerMoved
 } from "./event.js";
+import Entity from "./entity.js";
 
 const COMBINATIONS = [
   [0, 1, 2],
@@ -17,8 +18,6 @@ const COMBINATIONS = [
   [0, 4, 8],
   [2, 4, 6]
 ];
-
-import Entity from "./entity.js";
 
 export function resetGame(game) {
   const event = new GameCreated(game.aggregateId, 1, {
@@ -76,6 +75,8 @@ export default class Game extends Entity {
         break;
       case PlayerAdded.name:
       case PlayerRemoved.name:
+        // To avoid undeterministic behaviour, show the final state instead of
+        // performing push/filter here.
         this.players = event.players;
         break;
       default:
