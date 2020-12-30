@@ -2,6 +2,7 @@ import {
   GameWon,
   GameDraw,
   GameCreated,
+  GameReset,
   PlayerAdded,
   PlayerRemoved,
   PlayerMoved
@@ -51,14 +52,18 @@ export default class Game extends Entity {
   end = false;
 
   apply(event) {
-    if (event.aggregateVersion != this.aggregateVersion + 1) return;
-    this.aggregateId = event.aggregateId;
-    this.aggregateVersion = event.aggregateVersion;
+    super.apply(event);
 
     switch (event.constructor.name) {
       case GameCreated.name:
         this.round = event.round;
         this.players = event.players;
+        this.labels = event.labels;
+        this.cells = event.cells;
+        this.end = false;
+        break;
+      case GameReset.name:
+        this.round = event.round;
         this.labels = event.labels;
         this.cells = event.cells;
         this.end = false;
@@ -147,7 +152,11 @@ export default class Game extends Entity {
   }
 
   reset() {
-    const event = new GameReset(this.aggregateId, this.aggregateVersion + 1);
+    const event = new GameReset(this.aggregateId, this.aggregateVersion + 1, {
+      labels: "xo",
+      round: 0,
+      cells: Array(9).fill(null)
+    });
     this.raise(event);
   }
 

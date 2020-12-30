@@ -12,7 +12,13 @@ export default class Entity extends PubSub {
   }
 
   apply(event) {
-    throw new Error("not implemented");
+    if (
+      event.aggregateVersion != this.aggregateVersion + 1 &&
+      event.aggregateId !== this.aggregateId
+    )
+      return;
+    this.aggregateId = event.aggregateId;
+    this.aggregateVersion = event.aggregateVersion;
   }
 
   raise(event) {

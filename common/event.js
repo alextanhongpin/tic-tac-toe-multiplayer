@@ -20,6 +20,14 @@ export class GameWon extends GameEvent {
 }
 
 export class GameDraw extends GameEvent {}
+export class GameReset extends GameEvent {
+  constructor(aggregateId, aggregateVersion, { cells, labels, round }) {
+    super(aggregateId, aggregateVersion);
+    this.cells = cells;
+    this.labels = labels;
+    this.round = round;
+  }
+}
 
 export class GameCreated extends GameEvent {
   constructor(
@@ -57,3 +65,37 @@ export class PlayerMoved extends GameEvent {
     this.round = round;
   }
 }
+
+export const mapEvent = event => {
+  switch (event.type) {
+    case "GameReset":
+      return new GameReset(event.aggregateId, event.aggregateVersion, event);
+    case "GameCreated":
+      return new GameCreated(event.aggregateId, event.aggregateVersion, event);
+    case "GameDraw":
+      return new GameDraw(event.aggregateId, event.aggregateVersion);
+    case "GameWon":
+      return new GameWon(
+        event.aggregateId,
+        event.aggregateVersion,
+        event.playerId
+      );
+    case "PlayerMoved":
+      return new PlayerMoved(event.aggregateId, event.aggregateVersion, event);
+
+    case "PlayerAdded":
+      return new PlayerAdded(
+        event.aggregateId,
+        event.aggregateVersion,
+        event.players
+      );
+    case "PlayerRemoved":
+      return new PlayerRemoved(
+        event.aggregateId,
+        event.aggregateVersion,
+        event.players
+      );
+    default:
+      throw new Error(`mapEventError: not implemented ${event}`);
+  }
+};

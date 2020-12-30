@@ -17,13 +17,18 @@ async function main() {
   io.on("connection", socket => {
     const userId = socket.id;
 
-    for (let event of game.events) {
-      socket.emit(event.constructor.name, event);
-    }
+    // Send all past events once to rebuild the game state.
+    socket.emit("handshake", game.events);
     game.addPlayer(userId);
 
     socket.on("PlayerMoved", position => {
       game.move(position, userId);
+    });
+
+    // This reset will only add an event to the existing history events.
+    // If there's a won game previously, the client will replay that event too.
+    socket.on("GameReset", event => {
+      game.reset();
     });
 
     console.log("user connected", userId);
