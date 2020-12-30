@@ -1,8 +1,11 @@
+// The base event for Game entity.
 export class GameEvent {
   constructor(aggregateId, aggregateVersion) {
     this.aggregateId = aggregateId;
     this.aggregateVersion = aggregateVersion;
   }
+
+  // Overrides JSON.stringify by attaching event `type`.
   toJSON() {
     const obj = Object.fromEntries(Object.entries(this));
     return {

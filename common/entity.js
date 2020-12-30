@@ -11,6 +11,7 @@ export default class Entity extends PubSub {
     this.events = events;
   }
 
+  // Ensure that the version and id matches.
   apply(event) {
     if (
       event.aggregateVersion != this.aggregateVersion + 1 &&
@@ -25,7 +26,16 @@ export default class Entity extends PubSub {
     this.events.push(event);
     this.apply(event);
 
-    // PubSub.
+    // PubSub (optional).
     this.emit(event.constructor.name, event);
+  }
+
+  // Include type when serializing.
+  toJSON() {
+    const obj = Object.fromEntries(Object.entries(this));
+    return {
+      ...obj,
+      type: this.constructor.name
+    };
   }
 }
